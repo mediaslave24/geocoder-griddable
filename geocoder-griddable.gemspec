@@ -4,7 +4,7 @@ Gem::Specification.new do |s|
 
   # Description Meta...
   s.name        = 'geocoder-griddable'
-  s.version     = "0.0.1"
+  s.version     = "0.0.2"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Michael"]
   s.email       = ['mmaccoffe@gmail.com']
