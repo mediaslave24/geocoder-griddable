@@ -45,13 +45,23 @@ module Geocoder
     end
     include KmToLong
 
-    Point = Struct.new(:lat, :lng) do
+    Point = Struct.new(:lat, :lng, :km_radius) do
       def initialize(*args)
         if args.size == 1 && args[0].is_a?(String)
           args = args[0].split(',').map(&:to_f)
         end
         args.map! do |arg| arg.round(6) end
         super
+      end
+
+      include KmToLong
+
+      def move_horiz(km_distance)
+        self.lng += km_to_lng(km_distance, self)
+      end
+
+      def move_vert(km_distance)
+        self.lat += km_to_lat(km_distance)
       end
 
       def to_s
@@ -62,6 +72,35 @@ module Geocoder
     Grid = Struct.new(:lines) do
       def to_s
         lines.to_s
+      end
+      include KmToLong
+
+      def optimize_points
+        return if @optimized
+        (0...lines.size).each do |current_line_index|
+          self.lines = map_with_index do |line, line_index|
+            if line_index > current_line_index
+              line.map do |point|
+                point.move_horiz(point.km_radius)
+                point.move_vert(2*point.km_radius - point.km_radius*sqrt(3))
+                point
+              end
+            else
+              line
+            end
+          end
+        end
+        @optimized = true
+        self
+      end
+
+      def map_with_index(&block)
+        index = 0
+        lines.map do |element|
+          result = yield element, index
+          index += 1
+          result
+        end
       end
 
       def to_json
@@ -98,12 +137,13 @@ module Geocoder
     end
     
     def to_grid(km)
+      km_radius = km/2
       lines = vertical_divisions(km).map do |lat|
         horizontal_divisions(km, lat).map do |lng|
-          Point.new(lat, lng)
+          Point.new(lat, lng, km_radius)
         end
       end
-      @unfiltered_grid = grid = Grid.new(lines)
+      @unfiltered_grid = grid = Grid.new(lines).optimize_points
       filter_grid(grid)
     end
 
