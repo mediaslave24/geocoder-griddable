@@ -50,6 +50,7 @@ module Geocoder
         if args.size == 1 && args[0].is_a?(String)
           args = args[0].split(',').map(&:to_f)
         end
+        args.map! do |arg| arg.round(6) end
         super
       end
 
@@ -80,9 +81,8 @@ module Geocoder
         (@endc - @startc).abs
       end
 
-      def divide_by(number)
-        dx = length / number
-        (@startc..@endc).step(dx).to_a
+      def divide(step)
+        (@startc..@endc).step(step.round(6).abs).to_a
       end
     end
 
@@ -98,11 +98,8 @@ module Geocoder
     end
     
     def to_grid(km)
-      y = get_y_divider(km)
-      return unless y
-      lines = vertical_divisions(y).map do |lat|
-        x = get_x_divider(km, lat)  
-        horizontal_divisions(x).map do |lng|
+      lines = vertical_divisions(km).map do |lat|
+        horizontal_divisions(km, lat).map do |lng|
           Point.new(lat, lng)
         end
       end
@@ -135,20 +132,18 @@ module Geocoder
       @bottom_left ||= Point.new(bottom_right.lat, top_left.lng)
     end
 
-    def get_y_divider(km)
-      ((top_left.lat - bottom_left.lat) / km_to_lat(km)).round
+    def vertical_divisions(km)
+      step = km_to_lat(km)
+      Line.
+        new(top_left.lat, bottom_left.lat).
+        divide(step)
     end
 
-    def get_x_divider(km, lat)
-      ((top_right.lng - top_left.lng) / km_to_lng(km, Point.new(lat, 10))).round
-    end
-
-    def vertical_divisions(divider)
-      Line.new(top_left.lat, bottom_left.lat).divide_by(divider)
-    end
-
-    def horizontal_divisions(divider)
-      Line.new(top_left.lng, top_right.lng).divide_by(divider)
+    def horizontal_divisions(km, lat)
+      step = km_to_lng(km, Point.new(lat, 10))
+      Line.
+        new(top_left.lng, top_right.lng).
+        divide(step)
     end
 
     def filter_grid(grid)
