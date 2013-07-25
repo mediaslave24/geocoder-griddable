@@ -12,7 +12,7 @@ module Geocoder
         dlat = deg_to_rad(coord2.lat - coord1.lat)
         dlng = deg_to_rad(coord2.lng - coord1.lng)
 
-        a = sin(dlat/2)**2 + sin(dlng/2)**2 * cos(lat1) * cos(lat2)
+        a = sin(dlat/2.0)**2 + sin(dlng/2.0)**2 * cos(lat1) * cos(lat2)
         c = 2 * atan2(sqrt(a), sqrt(1 - a))
         R*c
       end
@@ -75,21 +75,35 @@ module Geocoder
       end
       include KmToLong
 
-      def optimize_points
-        return if @optimized
-        (0...lines.size).each do |current_line_index|
-          self.lines = map_with_index do |line, line_index|
-            if line_index > current_line_index
-              line.map do |point|
-                point.move_horiz(point.km_radius)
-                point.move_vert(2*point.km_radius - point.km_radius*sqrt(3))
-                point
-              end
-            else
-              line
+      def move_odd_lines_right
+        self.lines = map_with_index do |line, index|
+          if index.odd?
+            line.map do |point|
+              point.move_horiz(point.km_radius)
+              point
             end
+          else
+            line
           end
         end
+      end
+
+      def move_all_lines_top
+        radius = self.lines[0][0].km_radius
+        delta = radius * 2.0 - radius * sqrt(3)
+
+        self.lines = map_with_index do |line, index|
+          line.map do |point|
+            point.move_vert(delta * -index)
+            point
+          end
+        end
+      end
+
+      def optimize_points
+        return self if @optimized
+        move_odd_lines_right
+        move_all_lines_top
         @optimized = true
         self
       end
@@ -137,7 +151,7 @@ module Geocoder
     end
     
     def to_grid(km)
-      km_radius = km/2
+      km_radius = km/2.0
       lines = vertical_divisions(km).map do |lat|
         horizontal_divisions(km, lat).map do |lng|
           Point.new(lat, lng, km_radius)
