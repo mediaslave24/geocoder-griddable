@@ -50,7 +50,7 @@ module Geocoder
         if args.size == 1 && args[0].is_a?(String)
           args = args[0].split(',').map(&:to_f)
         end
-        args.map! do |arg| arg.round(6) end
+        args.map! do |arg| arg.round(10) end
         super
       end
 
